@@ -4,7 +4,7 @@ import platform
 from openrgb import utils
 from typing import Union, Optional
 from openrgb.network import NetworkClient
-# from dataclasses import dataclass
+from openrgb.plugins import create_plugin
 from time import sleep
 from os import environ
 
@@ -337,6 +337,7 @@ class OpenRGBClient(utils.RGBObject):
         self.device_num = 0
         self.devices = []
         self.profiles = []
+        self.plugins = []
         self.comms = NetworkClient(self._callback, address, port, name, protocol_version)
         self.address = address
         self.port = port
@@ -366,6 +367,8 @@ class OpenRGBClient(utils.RGBObject):
             self.comms.requestDeviceNum()
         elif type == utils.PacketType.REQUEST_PROFILE_LIST:
             self.profiles = data
+        elif type == utils.PacketType.REQUEST_PLUGIN_LIST:
+            self.plugins = [create_plugin(plugin, self.comms) for plugin in data]
 
     def set_color(self, color: utils.RGBColor, fast: bool = False):
         '''
@@ -511,12 +514,20 @@ class OpenRGBClient(utils.RGBObject):
             self.comms.requestDeviceData(x)
         if self.comms._protocol_version >= 2:
             self.update_profiles()
+        if self.comms._protocol_version >= 4:
+            self.update_plugins()
 
     def update_profiles(self):
         '''
         Gets the list of available profiles from the server.
         '''
         self.comms.requestProfileList()
+
+    def update_plugins(self):
+        '''
+        Gets the list of enabled plugins from the server.
+        '''
+        self.comms.requestPluginList()
 
     def show(self, fast: bool = False, force: bool = False):
         '''
